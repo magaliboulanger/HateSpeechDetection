@@ -6,3 +6,6 @@
 */.idea
 /.idea
 *.log
+*/GloVe
+*/encoder
+*/fastText
