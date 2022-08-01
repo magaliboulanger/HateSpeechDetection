@@ -1,7 +1,7 @@
 
 from helper_2 import Helper
 from text_processing import InferSentProcessing
-from image_processing import ImageProcessing
+from preprocess_images import ImageProcessing
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
