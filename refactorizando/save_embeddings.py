@@ -14,9 +14,9 @@ for text in texts:
     i+=1
 
 f = open ('results/output_embeddings.txt','w')
-f.write(output)
+f.write(str(output))
 f.close()
 
 g = open ('results/output_texts.txt','w')
-g.write(texts)
+g.write(str(texts))
 g.close()

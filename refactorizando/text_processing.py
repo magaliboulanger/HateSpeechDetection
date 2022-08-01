@@ -1,4 +1,5 @@
 import pandas as pd
+import tensorflow as tf 
 from sentence_transformers import SentenceTransformer
 from random import randint
 import numpy as np
@@ -15,7 +16,11 @@ class TextProcessing:
     self.model = SentenceTransformer('all-MiniLM-L6-v2')
 
   def encode_sentences(self, sentences):
-    return self.model.encode(sentences)
+    output=[]
+    for sentence in sentences:
+    	s=self.model.encode(sentence)
+    	output.append(tf.math.l2_normalize(s))
+    return output
 
 
 class InferSent(nn.Module):
@@ -270,7 +275,7 @@ class InferSent(nn.Module):
 class InferSentProcessing:
 	def __init__(self):
 		model_version = 2
-		MODEL_PATH = "/home/smhate/Desktop/REPO/HateSpeech/Refactorizando/encoder/infersent%s.pkl" % model_version
+		MODEL_PATH = "/home/smhate/Documents/HateSpeechDetection/refactorizando/encoder/infersent%s.pkl" % model_version
 		params_model = {'bsize': 64, 'word_emb_dim': 300, 'enc_lstm_dim': 2048,
 					'pool_type': 'max', 'dpout_model': 0.0, 'version': model_version}
 
@@ -282,7 +287,7 @@ class InferSentProcessing:
 		self.model = self.model.cuda() if use_cuda else self.model
 
 		# If infersent1 -> use GloVe embeddings. If infersent2 -> use InferSent embeddings.
-		W2V_PATH = '/home/smhate/Desktop/REPO/HateSpeech/Refactorizando/GloVe/glove.840B.300d.txt' if model_version == 1 else '/home/smhate/Desktop/REPO/HateSpeech/Refactorizando/fastText/crawl-300d-2M.vec'
+		W2V_PATH = '/home/smhate/Documents/HateSpeechDetection/refactorizando/GloVe/glove.840B.300d.txt' if model_version == 1 else '/home/smhate/Documents/HateSpeechDetection/refactorizando/fastText/crawl-300d-2M.vec'
 		self.model.set_w2v_path(W2V_PATH)
 
 

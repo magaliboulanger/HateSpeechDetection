@@ -6,7 +6,7 @@ from PIL import Image
 import os
 
 PATH="/hate/Dataset/img_without_text"
-MAX_K_SILUETA=8500
+MAX_K_SILUETA=300
 TOP_OPTIMOS_K=10
 
 tp = TextProcessing()
