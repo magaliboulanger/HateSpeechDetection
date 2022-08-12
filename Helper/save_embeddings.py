@@ -1,5 +1,5 @@
-from helper_2 import Helper
-from text_processing import TextProcessing
+from helper import Helper
+from text_processing.text_processing import TextProcessing
 
 tp = TextProcessing()
 helper = Helper(tp)
