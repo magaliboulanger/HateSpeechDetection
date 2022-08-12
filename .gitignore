@@ -9,3 +9,4 @@
 */GloVe
 */encoder
 */fastText
+*.DS_Store

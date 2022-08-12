@@ -4,13 +4,17 @@ from tensorflow.keras.preprocessing.image import load_img
 # import resnet
 
 # clustering and dimension reduction
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, Birch, AgglomerativeClustering, OPTICS
 
 # for everything else
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from scipy import spatial
+
+from sklearn.mixture import GaussianMixture
+
+
 BASE=2
 
 class Clustering():
@@ -18,7 +22,11 @@ class Clustering():
         self.kmeans = None
 
     def group(self, n_clusters, features, filenames):
-        self.kmeans = KMeans(n_clusters=n_clusters, random_state=22)
+        #self.kmeans = KMeans(n_clusters=n_clusters, random_state=22)
+        #self.kmeans = GaussianMixture(n_components=n_clusters)
+        #self.kmeans = Birch(threshold=0.03, n_clusters=n_clusters)
+        #self.kmeans = AgglomerativeClustering(n_clusters=n_clusters)
+        self.kmeans = OPTICS(metric='cosine')
         self.kmeans.fit(features)
         self.groups = {}
         for file, cluster in zip(filenames, self.kmeans.labels_):
@@ -88,6 +96,7 @@ class Clustering():
         from sklearn.metrics import silhouette_score
         K = range(BASE, max_k)
         for k in K:
+            print(k)
             kmeans = KMeans(n_clusters=k).fit(features)
             labels = kmeans.labels_
             # calcular el puntaje de la silueta promedio
