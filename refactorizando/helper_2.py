@@ -90,7 +90,9 @@ class Helper():
             #print(prep_text)
             #print(len(prep_text))
 
-            pred = clustering.get_top_n_similar_clusters(top_n_clusters, prep_text, num_clusters)
+            #pred = clustering.get_top_n_similar_clusters(top_n_clusters, prep_text, num_clusters)
+            pred = clustering.predict(prep_text, num_clusters)
+
             #creo vector solo con los numeros del cluster
             top_clusters = []
             for i in range(len(pred)):
