@@ -22,7 +22,7 @@ class ImageProcessing():
         os.chdir(path)
         self.model = VGG16()
         self.model = Model(inputs=self.model.inputs, outputs=self.model.layers[-2].output)
-
+        self.pca = 0
         # this list holds all the image filename
         self.memes = []
 
@@ -84,11 +84,12 @@ class ImageProcessing():
         feat = feat.reshape(-1, 4096)
         feat.shape
         (210, 4096)
-
-        self.pca = PCA(n_components=10, random_state=22)
-        self.pca.fit(feat)
+        if self.pca == 0:
+            self.pca = PCA(n_components=10, random_state=22)
+            self.pca.fit(feat)
         self.x = self.pca.transform(feat)
         return self.x
+
 
     def save_pca(self):
         pickle.dump(self.pca, open("pca.pkl", "wb"))

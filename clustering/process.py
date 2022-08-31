@@ -22,11 +22,11 @@ class Clustering():
         self.kmeans = None
 
     def group(self, n_clusters, features, filenames):
-        #self.kmeans = KMeans(n_clusters=n_clusters, random_state=22)
+        self.kmeans = KMeans(n_clusters=n_clusters, random_state=22)
         #self.kmeans = GaussianMixture(n_components=n_clusters)
         #self.kmeans = Birch(threshold=0.03, n_clusters=n_clusters)
         #self.kmeans = AgglomerativeClustering(n_clusters=n_clusters)
-        self.kmeans = OPTICS(metric='cosine')
+        #self.kmeans = OPTICS(metric='cosine')
         self.kmeans.fit(features)
         self.groups = {}
         for file, cluster in zip(filenames, self.kmeans.labels_):
