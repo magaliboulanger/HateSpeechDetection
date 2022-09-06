@@ -198,38 +198,82 @@ class Helper():
         # 'precision':tp/(tp+fp), 'recall':tp/(tp+fn)}
         return metrics
 
-
     def select_survivor(self, data, similars):
         for item in similars:
-            if item['similarity']!=0.0:
-                df = data.loc[data['id'] == int(item['name'][:5])].values[0]
-                if df[2] == 1:
-                    return pd.DataFrame(data=df, index=['id', 'img', 'label', 'text'])
-        print(data.iloc[0].values)
-        return pd.DataFrame(data=data.iloc[0].values, index=['id', 'img', 'label', 'text'])
+            df = data.loc[data['id'] == int(item['name'][:5])].values[0]
+            if df[2] == 1:
+                return df[1]
+        return similars[0]['name']
 
     def remove_confounders_images(self):
         data = self.data_train
-        out = pd.DataFrame()
+        data = data.assign(mark=0)
+        out = []
+        k = 0
+        for i in range(0, len(data)):
+            img_prueba = data.iloc[i]
+            name_img = img_prueba['img']
+            name_img = name_img[4:]
+            print("iteracion:", i)
+            print("imagen:", name_img)
+            if img_prueba['mark'] != '1':
+                k += 1
+                img = load_img(self.img_path + name_img, target_size=(224, 224))
+                image = np.array(img)
+                similars = self.get_similar_images(image, self.get_names_of_json("train"), self.img_path)
+                survivor = self.select_survivor(data, similars)
+                discarded = []
+                print("survivor: ", survivor)
+                print("similars: ", similars)
+
+                out.append(survivor)
+
+                res = [i for i in similars if not (i['name'] == survivor[4:])]
+                print("survivor", survivor[4:])
+                print("a descartar: ", res)
+                data['img'] = data['mark'].replace(res, '1')
+                print("ceros: ", data.loc[data['mark'] == 1])
+        print("k: ", k)
+        return out
+
+
+    def select_survivor(self, data, similars):
+        for item in similars:
+          df = data.loc[data['id'] == int(item['name'][:5])].values[0]
+          if df[2] == 1:
+              return df[1]
+        return similars[0]['name']
+
+    def remove_confounders_images(self):
+        data = self.data_train
+        data = data.assign(mark = 0)
+        out = []
+        k = 0
         for i in range(0,len(data)):
             img_prueba = data.iloc[i]
             name_img = img_prueba['img']
-            name_img=name_img[4:]
-            if name_img != '0':
+            print(name_img)
+            name_img = name_img[4:]
+            print("iteracion:", i)
+            print("imagen:", name_img)
+            if img_prueba['mark'] != '1':
+                k+=1
                 img = load_img(self.img_path+name_img, target_size=(224,224))
                 image = np.array(img)
                 similars = self.get_similar_images(image,self.get_names_of_json("train"),self.img_path)
-                survivor = self.select_survivor(data,similars)
+                survivor=self.select_survivor(data,similars)
                 discarded = []
-                for item in similars:
-                    print(item['name'])
-                    print(survivor.iloc[1].values[0])
-                    if item['name']!=survivor.iloc[1].values[0][4:]:
-                        discarded.append(item['name'])
-                data['img'] = data['img'].replace(discarded,'0')
+                print("survivor: ", survivor)
+                print("similars: ", similars)
+
                 out.append(survivor)
 
-        print(out)
+                res = [i for i in similars if not (i['name'] == survivor[4:])]
+                print("survivor", survivor[4:])
+                print("a descartar: ", res)
+                data['img'] = data['mark'].replace(res, 1)
+                print("ceros: ", data.loc[data['mark'] == 1])
+        print("k: ", k)
         return out
 
     def get_similar_images(self, image, names, path):

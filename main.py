@@ -14,11 +14,11 @@ print("Creating Image processing")
 images = ImageProcessing(PATH, helper.get_names_of_json('train'))
 images.load_pca()
 clustering = Clustering()
-new_dataset=helper.remove_confounders_images()
+new_data = helper.remove_confounders_images()
+print(new_data)
 
-new_dataset = new_dataset.reset_index(drop=True)
-new_dataset.to_json('/hate/Dataset/train_without_confounders.jsonl',
-                      orient='records', lines=True)
+with open("lista_survivors.txt","w") as file:
+    file.write(new_data)
 
 #print("Clustering...")
 #
