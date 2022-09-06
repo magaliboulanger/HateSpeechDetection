@@ -1,7 +1,8 @@
-from helper.helper import Helper
+from Helper.helper import Helper
 from clustering.process import Clustering
 from image_processing.preprocess_images import ImageProcessing
 from text_processing.text_processing import TextProcessing, TextProcessingDistances
+import json
 
 TOP_N_CLUSTERS=1
 NUM_CLUSTERS=8
@@ -20,6 +21,8 @@ print(new_data)
 with open("lista_survivors.txt","w") as file:
     file.write(new_data)
 
+with open('lista_survivors.json', 'w') as fout:
+    json.dump(new_data, fout)
 #print("Clustering...")
 #
 #texts = helper.get_texts_of_json('train')
