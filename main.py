@@ -1,4 +1,4 @@
-from Helper.helper import Helper
+from helper.helper import Helper
 from clustering.process import Clustering
 from image_processing.preprocess_images import ImageProcessing
 from text_processing.text_processing import TextProcessing, TextProcessingDistances
@@ -15,14 +15,17 @@ print("Creating Image processing")
 images = ImageProcessing(PATH, helper.get_names_of_json('train'))
 images.load_pca()
 clustering = Clustering()
-new_data = helper.remove_confounders_images()
-print(new_data)
+#new_data = helper.remove_confounders_images()
+#print(new_data)
 
-with open("lista_survivors.txt","w") as file:
-    file.write(new_data)
+new = helper.construct_new_data()
 
-with open('lista_survivors.json', 'w') as fout:
-    json.dump(new_data, fout)
+
+#with open("lista_survivors.txt","w") as file:
+#    file.write(str(new_data))
+
+#with open('lista_survivors.json', 'w') as fout:
+#    json.dump(new_data, fout)
 #print("Clustering...")
 #
 #texts = helper.get_texts_of_json('train')

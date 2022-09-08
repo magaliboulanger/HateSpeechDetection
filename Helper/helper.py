@@ -4,6 +4,7 @@ import numpy as np
 from sewar.full_ref import mse, rmse, psnr, uqi, ssim, ergas, scc, rase, sam, msssim, vifp
 from tensorflow.keras.preprocessing.image import load_img
 import os
+import json
 
 class Helper():
     def __init__(self, text_processor):
@@ -12,10 +13,13 @@ class Helper():
         self.train_path = self.data_dir + "/train_sr.jsonl"
         self.dev_path = self.data_dir + "/dev.jsonl"
         self.test_path = self.data_dir + "/test.jsonl"
+        self.list_survivors = self.data_dir + "/lista_survivors.json"
         #self.train_without_confounders_img = self.data_dir + "train_without_confounders_img.jsonl"
         self.data_train = pd.read_json(self.train_path, lines=True)
         self.data_test = pd.read_json(self.test_path, lines=True)
         self.data_dev = pd.read_json(self.dev_path, lines=True)
+        self.data_survivors = pd.read_json(self.list_survivors)
+
         #self.data_train_w_c_img = pd.read_json(self.train_without_confounders_img, lines=True)
         self.sentences_train = self.data_train['text'].to_list()
         self.sentences_test = self.data_test['text'].to_list()
@@ -203,7 +207,7 @@ class Helper():
         data = data.assign(mark = 0)
         out = []
         names = self.get_names_of_json("train")
-        for i in range(0,len(data)):
+        for i in range(0,10):
             img_prueba = data.iloc[i]
             name_img = img_prueba['img']
             name_img = name_img[4:]
@@ -239,3 +243,24 @@ class Helper():
                   if valor < 1000:
                     similarity_output.append(file.name)
         return similarity_output
+
+    def select_survivor(self, list_similars):
+        for item in list_similars:
+            data = self.data_train.loc[self.data_train['id'] == int(item[:5])]
+            if data['label'].values == 1:
+                return data
+        return self.data_train.loc[self.data_train['id'] == int(list_similars[0][:5])]
+
+    def construct_new_data(self):
+        out = []
+        for i in range(0,len(self.data_survivors.index)):
+            row = self.data_survivors.iloc[i]
+            survivor = self.select_survivor(row['similars'])
+            out.append({'id': int(survivor['id'].values[0]), 'img': survivor['img'].values[0],
+                        'label': int(survivor['label'].values[0]), 'text': survivor['text'].values[0]})
+
+        with open(self.data_dir + '/train_sr_final.jsonl', 'w') as fp:
+            for row in out:
+                json.dump(row, fp)
+                fp.write('\n')
+        return out
