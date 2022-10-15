@@ -18,7 +18,7 @@ if __name__ == '__main__':
     salidas.append({"acc_avg": suma/10})
 
     #change name according to the run
-    f = open("BisectingKMeans-bertuncased-16clusters-notRouted.txt", "w")
+    f = open("outputs/0.005-KMeans-allminiLML6V2-5clusters-notRouted.txt", "w")
     f.write(str(salidas))
     f.close()
 

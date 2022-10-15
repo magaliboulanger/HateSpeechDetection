@@ -19,14 +19,12 @@ import json
 import numpy as np
 from sklearn.cluster import SpectralClustering, DBSCAN, BisectingKMeans, KMeans
 from sklearn.metrics import adjusted_mutual_info_score
-import matplotlib
 import os
 from PIL import Image
 from torchvision import transforms
 import torch
 from torch import nn
 from torch import Tensor
-from torchvision.models import ResNet
 from tqdm.auto import tqdm
 from sklearn.metrics import classification_report
 
@@ -98,20 +96,21 @@ class MoE(nn.Module):
 
 class Procedimiento:
 
-    def __init__(self):
-        with open('/Users/magaliboulanger/Documents/Dataset/train.jsonl', 'rt', encoding='utf-8') as f:
+    def __init__(self, MODELO_TEXTO):
+        with open('/Users/magaliboulanger/Documents/Dataset/train_sr_final.jsonl', 'rt', encoding='utf-8') as f:
             self.train = [json.loads(l) for l in f]
 
         with open('/Users/magaliboulanger/Documents/Dataset/test.jsonl', 'rt', encoding='utf-8') as f:
             self.test = [json.loads(l) for l in f]
 
-        with open('/Users/magaliboulanger/Documents/Dataset/dev.jsonl', 'rt', encoding='utf-8') as f:
+        with open('/Users/magaliboulanger/Documents/Dataset/dev_sr_final.jsonl', 'rt', encoding='utf-8') as f:
             self.dev = [json.loads(l) for l in f]
-
-        self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_cr_all-miniLM-L6-V2.npz' #text_cr.npz
-        self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_cr.npz'
-
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.modelo_texto=MODELO_TEXTO
+        if MODELO_TEXTO=='A':
+            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_sr_all-miniLM-L6-V2.npz'
+        if MODELO_TEXTO=='B':
+            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_sr.npz'
+        self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_sr.npz'
 
     def encode_images(self, model, dataset, preprocess, device, batch_size=100):
         res = []
@@ -136,9 +135,11 @@ class Procedimiento:
                     batch.clear()
         return np.concatenate(res, axis=0)
 
-    def proceder(self):
-        # generacion embeddings
-        st = sentence_transformers.SentenceTransformer('all-MiniLM-L6-v2') #bert-base-uncased
+    def generate_embeddings_text(self):
+        if self.modelo_texto == 'B':
+            st = sentence_transformers.SentenceTransformer('bert-base-uncased')
+        if self.modelo_texto == 'A':
+            st = sentence_transformers.SentenceTransformer('all-MiniLM-L6-v2')
         if not os.path.exists(self.s_file):
             train_text = st.encode([t['text'] for t in self.train], show_progress_bar=True)
             test_text = st.encode([t['text'] for t in self.test], show_progress_bar=True)
@@ -150,8 +151,9 @@ class Procedimiento:
             test_text = f['test']
             dev_text = f['dev']
             del f
+        return train_text, dev_text, test_text
 
-        # codificacion imagenes
+    def extract_features_images(self):
         if not os.path.exists(self.i_file):
             model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet152', pretrained=True)
             preprocess = transforms.Compose([
@@ -161,13 +163,13 @@ class Procedimiento:
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
             model = ResNetExtract(model)
-            print(f'Device: {self.device}')
-            model.to(self.device)
-            train_img = self.encode_images(model, self.train, preprocess, self.device)
+            print(f'Device: {device}')
+            model.to(device)
+            train_img = self.encode_images(model, self.train, preprocess, device, 191)
             train_img = train_img / np.linalg.norm(train_img, axis=1, keepdims=True)
-            test_img = self.encode_images(model, self.test, preprocess, self.device)
+            test_img = self.encode_images(model, self.test, preprocess, device)
             test_img = test_img / np.linalg.norm(test_img, axis=1, keepdims=True)
-            dev_img = self.encode_images(model, self.dev, preprocess, self.device)
+            dev_img = self.encode_images(model, self.dev, preprocess, device, 179)
             dev_img = dev_img / np.linalg.norm(dev_img, axis=1, keepdims=True)
             np.savez_compressed(self.i_file, train=train_img, test=test_img, dev=dev_img)
             del model
@@ -177,9 +179,17 @@ class Procedimiento:
             test_img = f['test']
             dev_img = f['dev']
             del f
+        return train_img, dev_img, test_img
 
+
+    def proceder(self, threshold, n_clusters, clustering_model, routed):
         # clustering
-        cluster = KMeans(5, random_state=42)
+        train_img, dev_img, test_img = self.extract_features_images()
+        train_text, dev_text, test_text = self.generate_embeddings_text()
+        if clustering_model=='B':
+            cluster = BisectingKMeans(n_clusters, random_state=42)
+        if clustering_model=='K':
+            cluster = KMeans(n_clusters, random_state=42)
         train_i_c = cluster.fit_predict(train_img)
         adjusted_mutual_info_score([t['label'] for t in self.train], train_i_c)
         dev_i_c = cluster.predict(dev_img)
@@ -188,7 +198,7 @@ class Procedimiento:
         y = np.asarray([t['label'] for t in self.train])
 
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = MoE(x.shape[1], 5)
+        model = MoE(x.shape[1], n_clusters)
         x1 = torch.from_numpy(x)
         mean = torch.mean(x1, axis=0)
         std = torch.std(x1, axis=0)
@@ -234,7 +244,8 @@ class Procedimiento:
             for i in range(0, x_test1.shape[0], 100):
                 x_i = x_test1[i:i + 100, ...].to(device)
                 c_i = c_test[i:i + 100].to(device)
-                y_pred.append(model(x_i, c_i, False).cpu().numpy())
+                y_pred.append(model(x_i, c_i, routed).cpu().numpy())
 
         y_pred = np.concatenate(y_pred, axis=0)
-        return classification_report(y_test, y_pred > 0.005, output_dict=True)
+        return y_pred, classification_report(y_test, y_pred > threshold, output_dict=True)
+
