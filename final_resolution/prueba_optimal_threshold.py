@@ -97,20 +97,20 @@ class MoE(nn.Module):
 class Procedimiento:
 
     def __init__(self, MODELO_TEXTO):
-        with open('/Users/magaliboulanger/Documents/Dataset/train_sr_final.jsonl', 'rt', encoding='utf-8') as f:
+        with open('/Users/magaliboulanger/Documents/Dataset/train.jsonl', 'rt', encoding='utf-8') as f:
             self.train = [json.loads(l) for l in f]
 
         with open('/Users/magaliboulanger/Documents/Dataset/test.jsonl', 'rt', encoding='utf-8') as f:
             self.test = [json.loads(l) for l in f]
 
-        with open('/Users/magaliboulanger/Documents/Dataset/dev_sr_final.jsonl', 'rt', encoding='utf-8') as f:
+        with open('/Users/magaliboulanger/Documents/Dataset/dev.jsonl', 'rt', encoding='utf-8') as f:
             self.dev = [json.loads(l) for l in f]
         self.modelo_texto=MODELO_TEXTO
         if MODELO_TEXTO=='A':
-            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_sr_all-miniLM-L6-V2.npz'
+            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_cr_all-miniLM-L6-V2.npz'
         if MODELO_TEXTO=='B':
-            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_sr.npz'
-        self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_sr.npz'
+            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_cr.npz'
+        self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_cr.npz'
 
     def encode_images(self, model, dataset, preprocess, device, batch_size=100):
         res = []

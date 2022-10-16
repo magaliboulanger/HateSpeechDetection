@@ -234,7 +234,7 @@ class Procedimiento:
             for i in range(0, x_test1.shape[0], 100):
                 x_i = x_test1[i:i + 100, ...].to(device)
                 c_i = c_test[i:i + 100].to(device)
-                y_pred.append(model(x_i, c_i, False).cpu().numpy())
+                y_pred.append(model(x_i, c_i).cpu().numpy())
 
         y_pred = np.concatenate(y_pred, axis=0)
         return classification_report(y_test, y_pred > 0.005, output_dict=True)
