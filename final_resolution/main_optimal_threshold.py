@@ -6,36 +6,26 @@ from sklearn.model_selection import train_test_split
 
 from prueba_optimal_threshold import Procedimiento, MoE
 
-N_CLUSTERS=[5,8,11,13,14,16]
+N_CLUSTERS=[4, 5, 6, 7, 8, 9, 11, 13, 14, 16]
 CLUSTERING_MODEL=['K', 'B']
 TEXT_MODEL=['A', 'B']
 ROUTED=[True, False]
-with open('/Users/magaliboulanger/Documents/Dataset/dev.jsonl', 'rt', encoding='utf-8') as f:
+with open('/Users/magaliboulanger/Documents/Dataset/twitter_dataset_formatted.jsonl', 'rt', encoding='utf-8') as f:
     dev = [json.loads(l) for l in f]
-
+salida_texto = ""
 for tm in TEXT_MODEL:
     p = Procedimiento(tm)
-    train_img, dev_img, test_img = p.extract_features_images()
-    train_text, dev_text, test_text = p.generate_embeddings_text()
-    x = np.concatenate((train_img, train_text), axis=1)
-    y = np.asarray([t['label'] for t in dev])
     for cl in CLUSTERING_MODEL:
         for nc in N_CLUSTERS:
             for r in ROUTED:
                 y_pred, report = p.proceder(0.01, nc, cl, r)
                 false_pos_rate, true_pos_rate, proba = roc_curve(y,y_pred)
                 optimal_proba_cutoff = sorted(list(zip(np.abs(true_pos_rate - false_pos_rate), proba)), key=lambda i: i[0], reverse=True)[0][1]
-                print(optimal_proba_cutoff)
-                suma = 0
-                salidas = []
-                for i in range(0, 10):
-                    print(i)
-                    y_pred2, report2 = p.proceder(optimal_proba_cutoff,nc,cl,r)
-                    suma += report2['accuracy']
-                    salidas.append({"num_iteracion": i, "resultado": report2})
-                print(str(optimal_proba_cutoff)+'-'+str(cl)+'-'+str(tm)+'-'+str(nc)+'clusters-Routed'+str(r)+"=  accuracy: ", suma / 10)
-                salidas.append({"acc_avg": suma / 10})
-                # change name according to the run
-                f = open("outputs_ROC/"+str(optimal_proba_cutoff)+'-'+str(cl)+'-'+str(tm)+'-'+str(nc)+'clusters-Routed'+str(r)+".txt", "w")
-                f.write(str(salidas))
+                y_pred2, report2 = p.proceder(optimal_proba_cutoff,nc,cl,r)
+                salida_texto+= str(optimal_proba_cutoff)+'-'+str(cl)+'-'+str(tm)+'-'+str(nc)+'clusters-Routed'+str(r)+"=  accuracy: ",report2['accuracy'] + '\n'
+                print(str(optimal_proba_cutoff)+'-'+str(cl)+'-'+str(tm)+'-'+str(nc)+'clusters-Routed'+str(r)+"=  accuracy: ",report2['accuracy'] )#suma / 10
+                f = open("twitter_dataset_outputs/" + str(optimal_proba_cutoff)+'-'+str(cl)+'-'+str(tm)+'-'+str(nc)+'clusters-Routed'+str(r)+".txt", "w")
+                f.write(str(report2))
                 f.close()
+print("Todos los resultados: ")
+print(salida_texto)

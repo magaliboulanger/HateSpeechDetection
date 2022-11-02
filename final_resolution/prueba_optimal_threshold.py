@@ -64,6 +64,37 @@ class ResNetExtract(nn.Module):
         return x
 
 
+import random
+
+
+class MoE2(nn.Module):
+
+    def __init__(self, dims, clusters):
+        super().__init__()
+        self.l1 = nn.Linear(dims, 100)
+        self.l2 = nn.ModuleList()
+        for _ in range(clusters):
+            self.l2.append(nn.Linear(100, 10))
+        self.l3 = nn.Linear(10, 1)
+
+    def forward(self, x, routed=True):
+        x = self.l1(x)
+        x = nn.functional.leaky_relu(x)
+        if routed:
+            x = random.choice(self.l2)(x)
+            x = nn.functional.leaky_relu(x)
+        else:
+            all_x = []
+            for m in self.l2:
+                x1 = m(x)
+                x1 = nn.functional.leaky_relu(x1)
+                x1 = torch.unsqueeze(x1, dim=1)
+                all_x.append(x1)
+            all_x = torch.concat(all_x, dim=1)
+            x = torch.max(all_x, dim=1)[0]
+        x = self.l3(x)
+        return torch.sigmoid(x)[:, 0]
+
 # clasificador
 class MoE(nn.Module):
 
@@ -103,16 +134,16 @@ class Procedimiento:
         with open('/Users/magaliboulanger/Documents/Dataset/test.jsonl', 'rt', encoding='utf-8') as f:
             self.test = [json.loads(l) for l in f]
 
-        with open('/Users/magaliboulanger/Documents/Dataset/dev.jsonl', 'rt', encoding='utf-8') as f:
+        with open('/Users/magaliboulanger/Documents/Dataset/twitter_dataset_formatted.jsonl', 'rt', encoding='utf-8') as f:
             self.dev = [json.loads(l) for l in f]
         self.modelo_texto=MODELO_TEXTO
         if MODELO_TEXTO=='A':
             self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_cr_all-miniLM-L6-V2.npz'
         if MODELO_TEXTO=='B':
-            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_cr.npz'
-        self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_cr.npz'
+            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_twitter.npz'
+        self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_twitter.npz'
 
-    def encode_images(self, model, dataset, preprocess, device, batch_size=100):
+    def encode_images(self, model, dataset, preprocess, device, path, batch_size=100):
         res = []
         with tqdm(total=len(dataset)) as pbar:
             batch = []
@@ -123,8 +154,11 @@ class Procedimiento:
                         res.append(model(b).cpu().numpy())
                         pbar.update(len(batch))
                         batch.clear()
-                file = instance['img'].split('/')[1]
-                img = Image.open(f'/Users/magaliboulanger/Documents/Dataset/img/{file}').convert('RGB')
+                if len(instance['img'].split('/')) > 1:
+                    file = instance['img'].split('/')[1]
+                else:
+                    file = instance['img']+'.jpg'
+                img = Image.open(path + file).convert('RGB')
                 img = preprocess(img).unsqueeze(0)
                 batch.append(img)
             if len(batch) == batch_size:
@@ -133,6 +167,8 @@ class Procedimiento:
                     res.append(model(b).cpu().numpy())
                     pbar.update(len(batch))
                     batch.clear()
+        if len(res) == 1:
+            return np.asarray(res)
         return np.concatenate(res, axis=0)
 
     def generate_embeddings_text(self):
@@ -154,6 +190,7 @@ class Procedimiento:
         return train_text, dev_text, test_text
 
     def extract_features_images(self):
+        img_path = '/Users/magaliboulanger/Documents/Dataset/img/'
         if not os.path.exists(self.i_file):
             model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet152', pretrained=True)
             preprocess = transforms.Compose([
@@ -165,11 +202,11 @@ class Procedimiento:
             model = ResNetExtract(model)
             print(f'Device: {device}')
             model.to(device)
-            train_img = self.encode_images(model, self.train, preprocess, device, 191)
+            train_img = self.encode_images(model, self.train, preprocess, device, img_path)
             train_img = train_img / np.linalg.norm(train_img, axis=1, keepdims=True)
-            test_img = self.encode_images(model, self.test, preprocess, device)
+            test_img = self.encode_images(model, self.test, preprocess, device, img_path)
             test_img = test_img / np.linalg.norm(test_img, axis=1, keepdims=True)
-            dev_img = self.encode_images(model, self.dev, preprocess, device, 179)
+            dev_img = self.encode_images(model, self.dev, preprocess, device, "/Users/magaliboulanger/Downloads/MMHS150K/img_resized/")
             dev_img = dev_img / np.linalg.norm(dev_img, axis=1, keepdims=True)
             np.savez_compressed(self.i_file, train=train_img, test=test_img, dev=dev_img)
             del model
@@ -193,11 +230,13 @@ class Procedimiento:
         train_i_c = cluster.fit_predict(train_img)
         adjusted_mutual_info_score([t['label'] for t in self.train], train_i_c)
         dev_i_c = cluster.predict(dev_img)
+        print(dev_i_c)
 
         x = np.concatenate((train_img, train_text), axis=1)
         y = np.asarray([t['label'] for t in self.train])
 
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print("Dims: " ,x.shape[1])
         model = MoE(x.shape[1], n_clusters)
         x1 = torch.from_numpy(x)
         mean = torch.mean(x1, axis=0)
@@ -225,7 +264,7 @@ class Procedimiento:
                 c_i = c_i.to(device)
                 y_i = y_i.to(device).type(torch.float32)
                 optimizer.zero_grad()
-                pred = model(x_i, c_i)
+                pred = model(x_i, c_i, routed)
                 l = loss(pred, y_i)
                 losses.append(l.item())
                 l.backward()
@@ -233,7 +272,7 @@ class Procedimiento:
             pbar.set_description(f'Loss {np.mean(losses)}')
         pbar.close()
 
-        x_test = x = np.concatenate((dev_img, dev_text), axis=1)
+        x_test = np.concatenate((dev_img, dev_text), axis=1)
         y_test = np.asarray([t['label'] for t in self.dev])
 
         x_test1 = torch.from_numpy(x_test)
