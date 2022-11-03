@@ -134,11 +134,11 @@ class Procedimiento:
         with open('/Users/magaliboulanger/Documents/Dataset/test.jsonl', 'rt', encoding='utf-8') as f:
             self.test = [json.loads(l) for l in f]
 
-        with open('/Users/magaliboulanger/Documents/Dataset/twitter_dataset_formatted.jsonl', 'rt', encoding='utf-8') as f:
+        with open('/Users/magaliboulanger/Documents/Dataset/twitter_dataset_formatted_30k.jsonl', 'rt', encoding='utf-8') as f:
             self.dev = [json.loads(l) for l in f]
         self.modelo_texto=MODELO_TEXTO
         if MODELO_TEXTO=='A':
-            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_cr_all-miniLM-L6-V2.npz'
+            self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_allmini_twitter.npz'
         if MODELO_TEXTO=='B':
             self.s_file = '/Users/magaliboulanger/Documents/Dataset/text_twitter.npz'
         self.i_file = '/Users/magaliboulanger/Documents/Dataset/img_twitter.npz'
@@ -206,7 +206,7 @@ class Procedimiento:
             train_img = train_img / np.linalg.norm(train_img, axis=1, keepdims=True)
             test_img = self.encode_images(model, self.test, preprocess, device, img_path)
             test_img = test_img / np.linalg.norm(test_img, axis=1, keepdims=True)
-            dev_img = self.encode_images(model, self.dev, preprocess, device, "/Users/magaliboulanger/Downloads/MMHS150K/img_resized/")
+            dev_img = self.encode_images(model, self.dev, preprocess, device, "/Users/magaliboulanger/Downloads/MMHS150K/img_resized/", 1000)
             dev_img = dev_img / np.linalg.norm(dev_img, axis=1, keepdims=True)
             np.savez_compressed(self.i_file, train=train_img, test=test_img, dev=dev_img)
             del model
@@ -271,6 +271,10 @@ class Procedimiento:
                 optimizer.step()
             pbar.set_description(f'Loss {np.mean(losses)}')
         pbar.close()
+
+
+        print("dims texto: ", len(dev_text))
+        print("dims img: ", len(dev_img))
 
         x_test = np.concatenate((dev_img, dev_text), axis=1)
         y_test = np.asarray([t['label'] for t in self.dev])
